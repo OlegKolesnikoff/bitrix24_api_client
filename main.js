@@ -1,11 +1,11 @@
 const querystring = require('node:querystring');
 const fs = require('fs');
 
-class BX24_API {
-    static _VERSION = '0.0.1';
-    static _BITRIX_AUTH_URL = 'https://oauth.bitrix.info/oauth/token/';
+module.exports = {
+    _VERSION: '0.0.1',
+    _BITRIX_AUTH_URL: 'https://oauth.bitrix.info/oauth/token/',
     // список возможных ошибок, на случай, если потребуется обработать определенную ошибку
-    static _BITRIX_ERRORS = {
+    _BITRIX_ERRORS: {
         'expired_token': 'expired token, cant get new auth? Check access oauth server.',
         'invalid_token': 'invalid token, need reinstall application',
         'invalid_grant': 'invalid grant, check out define C_REST_CLIENT_SECRET or C_REST_CLIENT_ID',
@@ -15,32 +15,32 @@ class BX24_API {
         'NO_AUTH_FOUND': 'Some setup error b24, check in table "b_module_to_module" event "OnRestCheckAuth"',
         'INTERNAL_SERVER_ERROR': 'Server down, try later',
         "CONNECTION_ERROR": "Error connecting to authorization server"
-    };
+    },
 
-    static _empty_settings_error = {
+    _empty_settings_error: {
         'error': 'no_install_app',
         'error_description': 'error install app, pls install local application'
-    };
+    },
 
     /* вызов одного метода REST API Битрикс24 */
-    static async call(method, params = {}, auth) {
+    call: async function (method, params = {}, auth) {
         const query = {
             'method': method,
             'params': params,
         };
         return this._callFetch(query, auth);
-    }
+    },
 
     /* вызов пачки методов */
-    static async callBatch() {
+    callBatch: async function() {
         return {
             'error': 'not supported',
             'error_description': 'the method is currently not supported'
         }
-    }
+    },
 
     /* метод формирует и выолняет запрос */
-    static async _callFetch(query, auth) {
+    _callFetch: async function(query, auth) {
         let appSettings = await this._getAppSettings(auth);
         if (!appSettings) return this._empty_settings_error;
         let url;
@@ -65,10 +65,10 @@ class BX24_API {
 
         if (result?.error == 'expired_token' && !query.this_auth) return await this._getNewAuth(query, auth);
         return result;
-    }
+    },
 
     /* обёртка для fetch, для обработки ошибок и нестандартных сценариев */
-    static async _fetchHandle(url, params) {
+    _fetchHandle: async function(url, params) {
         let response = await fetch(url, params);
         // обработка смены адреса портала
         if (response.status === 302) {
@@ -89,28 +89,28 @@ class BX24_API {
             response = await response.json();
             return response;
         }
-    }
+    },
 
     /* Получение данных авторизации и проверка их на валидность */
-    static async _getAppSettings(auth) {
+    _getAppSettings: async function(auth) {
         const settingsData = await this._getSettingData(auth);
         if (!settingsData) return false;
         const { access_token, domain, refresh_token, application_token, client_endpoint } = settingsData;
         if (access_token && domain && refresh_token && application_token && client_endpoint) return settingsData;
         return false;
-    }
+    },
 
     /* Получение авторизационных данных */
-    static async _getSettingData(auth) {
+    _getSettingData: async function(auth) {
         // Метод для переопределения, предоплагается получение авторизационных данных из приложения
         // В нем нужно найти авторизационные данные клиента
         // Добаить к ним C_REST_CLIENT_ID и C_REST_CLIENT_SECRET
         // вернуть обновленный объект
         return auth;
-    }
+    },
 
     /* продление авторизации и повторная отправка текущего запроса */
-    static async _getNewAuth(query, auth) {
+    _getNewAuth: async function(query, auth) {
         let appSettings = await this._getAppSettings(auth);
         if (!appSettings) return this._empty_settings_error;
         let queryAuth = {
@@ -129,30 +129,30 @@ class BX24_API {
             return await this._callFetch(query, auth);
         }
         return null;
-    }
+    },
 
     /* формирует авторизационные данные при установке или при обновлении токена  для записи*/
-    static async _setAppSettings(appSettings, auth) {
+    _setAppSettings: async function(appSettings, auth) {
         if (typeof appSettings === 'object' && appSettings !== null) {
             let savedAppSettings = await this._getAppSettings(auth);
             if (savedAppSettings) appSettings = Object.assign(savedAppSettings, appSettings);
             return await this._setSettingsData(appSettings);
         }
         return false;
-    }
+    },
 
     /* записывает данные при установке приложения или при обновлении токена */
-    static async _setSettingsData(appSettings) {
+    _setSettingsData: async function(appSettings) {
         // предполагается, что данный метод, будет переопределен, на запись данных в БД
         fs.writeFileSync('./appSettings.json', JSON.stringify(appSettings));
         return true;
-    }
+    },
 
     /* Установка приложения 
     - только REST
     - приложение с интерфейсом + REST
     request - тело запроса, который приходит на роут /install */
-    static async installApp(request) {
+    installApp: async function(request) {
         const result = {
             'rest_only': true,
             'install': false
@@ -186,5 +186,3 @@ class BX24_API {
         }
     }
 }
-
-module.exports = BX24_API;
