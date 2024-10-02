@@ -2,7 +2,7 @@ const querystring = require('node:querystring');
 const fs = require('fs');
 
 module.exports = {
-    _VERSION: '0.0.2',
+    _VERSION: '0.0.3',
     _BITRIX_AUTH_URL: 'https://oauth.bitrix.info/oauth/token/',
     // список возможных ошибок, на случай, если потребуется обработать определенную ошибку
     _BITRIX_ERRORS: {
@@ -20,6 +20,14 @@ module.exports = {
     _empty_settings_error: {
         'error': 'no_install_app',
         'error_description': 'error install app, pls install local application'
+    },
+
+    params: {
+        'C_REST_CLIENT_ID': null, // String
+        'C_REST_CLIENT_SECRET': null, // String
+        'authPath': null, // String
+        'getAuthHandler': null, // async function
+        'setAuthHandler': null // async function
     },
 
     /* вызов одного метода REST API Битрикс24 */
@@ -102,11 +110,9 @@ module.exports = {
 
     /* Получение авторизационных данных */
     _getSettingData: async function(auth) {
-        // Метод для переопределения, предоплагается получение авторизационных данных из приложения
-        // В нем нужно найти авторизационные данные клиента
-        // Добаить к ним C_REST_CLIENT_ID и C_REST_CLIENT_SECRET
-        // вернуть обновленный объект
-        return auth;
+        if (this.params.getAuthHandler) return await this.params.getAuthHandler(auth);
+        let readSettings = fs.readFileSync(this.params.authPath);
+        return JSON.parse(readSettings);;
     },
 
     /* продление авторизации и повторная отправка текущего запроса */
@@ -116,9 +122,9 @@ module.exports = {
         let queryAuth = {
             'this_auth': 'Y',
             'params': {
-                'client_id': appSettings.C_REST_CLIENT_ID,
+                'client_id': this.params.C_REST_CLIENT_ID,
                 'grant_type': 'refresh_token',
-                'client_secret': appSettings.C_REST_CLIENT_SECRET,
+                'client_secret': this.params.C_REST_CLIENT_SECRET,
                 'refresh_token': appSettings.refresh_token
             }
         };
@@ -144,7 +150,8 @@ module.exports = {
     /* записывает данные при установке приложения или при обновлении токена */
     _setSettingsData: async function(appSettings) {
         // предполагается, что данный метод, будет переопределен, на запись данных в БД
-        fs.writeFileSync('./appSettings.json', JSON.stringify(appSettings));
+        if (this.params.setAuthHandler) return await this.params.setAuthHandler(auth);
+        fs.writeFileSync(this.params.authPath, JSON.stringify(appSettings));
         return true;
     },
 
