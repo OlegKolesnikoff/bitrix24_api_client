@@ -1,0 +1,26 @@
+{
+  "name": "bx24.node",
+  "version": "0.0.1",
+  "description": "Node.js SDK для REST API Битрикс24",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OlegKolesnikoff/BX24.Node.js.git"
+  },
+  "keywords": [
+    "Битрикс24",
+    "Б24",
+    "Bitrix24",
+    "BX24"
+  ],
+  "author": "Колесников Олег",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/OlegKolesnikoff/BX24.Node.js/issues"
+  },
+  "homepage": "https://github.com/OlegKolesnikoff/BX24.Node.js#readme",
+  "dependencies": {}
+}
