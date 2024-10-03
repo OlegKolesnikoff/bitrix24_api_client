@@ -150,7 +150,7 @@ module.exports = {
     /* записывает данные при установке приложения или при обновлении токена */
     _setSettingsData: async function(appSettings) {
         // предполагается, что данный метод, будет переопределен, на запись данных в БД
-        if (this.params.setAuthHandler) return await this.params.setAuthHandler(auth);
+        if (this.params.setAuthHandler) return await this.params.setAuthHandler(appSettings);
         fs.writeFileSync(this.params.authPath, JSON.stringify(appSettings));
         return true;
     },
