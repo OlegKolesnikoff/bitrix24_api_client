@@ -2,7 +2,7 @@ const querystring = require('node:querystring');
 const fs = require('fs');
 
 module.exports = {
-  _VERSION: '0.0.4',
+  _VERSION: '0.0.5',
   _BITRIX_AUTH_URL: 'https://oauth.bitrix.info/oauth/token/',
   // список возможных ошибок, на случай, если потребуется обработать определенную ошибку
   _BITRIX_ERRORS: {
@@ -32,8 +32,16 @@ module.exports = {
 
   /* вызов одного метода REST API Битрикс24 */
   async call(method, params = {}, auth) {
-    const query = { method, params };
-    return this._callFetch(query, auth);
+    try {
+      const query = { method, params };
+      return this._callFetch(query, auth);
+    } catch (err) {
+      return {
+        error: 'module_error',
+        description: `${err.name} ${err.message}`,
+        stack: err.stack
+      };
+    }
   },
 
   /* вызов пачки методов */
