@@ -2,7 +2,7 @@ const querystring = require('node:querystring');
 const fs = require('fs');
 
 module.exports = {
-  _VERSION: '0.0.3',
+  _VERSION: '0.0.4',
   _BITRIX_AUTH_URL: 'https://oauth.bitrix.info/oauth/token/',
   // список возможных ошибок, на случай, если потребуется обработать определенную ошибку
   _BITRIX_ERRORS: {
