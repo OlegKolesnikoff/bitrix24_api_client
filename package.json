@@ -4,7 +4,8 @@
   "description": "Node.js SDK для REST API Битрикс24",
   "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint"
   },
   "repository": {
     "type": "git",
@@ -24,7 +25,12 @@
   "homepage": "https://github.com/OlegKolesnikoff/BX24.Node.js#readme",
   "devDependencies": {
     "@eslint/js": "^9.11.1",
-    "eslint": "^9.11.1",
+    "eslint": "^9.12.0",
+    "eslint-plugin-n": "^17.11.1",
+    "eslint-plugin-node": "^11.1.0",
     "globals": "^15.10.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
