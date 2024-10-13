@@ -1,8 +1,8 @@
-const querystring = require('node:querystring');
 const fs = require('fs');
+const httpBuildQuery = require('./query');
 
 module.exports = {
-  _VERSION: '0.0.5',
+  _VERSION: '0.0.6',
   _BITRIX_AUTH_URL: 'https://oauth.bitrix.info/oauth/token/',
   // список возможных ошибок, на случай, если потребуется обработать определенную ошибку
   _BITRIX_ERRORS: {
@@ -65,12 +65,12 @@ module.exports = {
     };
     // проверка является ли запрос авторзационным
     if (query.this_auth == 'Y') {
-      url = this._BITRIX_AUTH_URL + '?' + querystring.encode(query.params);
+      url = this._BITRIX_AUTH_URL + '?' + httpBuildQuery(query.params).toString();
       options['method'] = 'GET';
     } else {
       url = appSettings.client_endpoint + query.method + '.json';
       query.params.auth = appSettings.access_token;
-      options['body'] = querystring.encode(query.params);
+      options['body'] = httpBuildQuery(query.params);
       options['method'] = 'POST';
     }
 
