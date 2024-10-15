@@ -192,10 +192,9 @@ function addTrying(fn) {
     const result = await fn.call(BX24,method, params, auth);
     if (result.error) {
       if (tryes > 0) {
-        if (impassableErrors.includes(result.error)) return result;
         if (Number.isInteger(tryes)) tryes--;
         await new Promise((r) => setTimeout(r, pause));
-        return await addTrying(fn);
+        return addTrying(fn);
       }
       return result;
     }

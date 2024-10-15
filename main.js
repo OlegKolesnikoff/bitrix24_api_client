@@ -2,7 +2,7 @@ const fs = require('fs');
 const httpBuildQuery = require('./query');
 
 module.exports = {
-  _VERSION: '0.0.8',
+  _VERSION: '0.0.9',
   _BITRIX_AUTH_URL: 'https://oauth.bitrix.info/oauth/token/',
   _EMPTY_SETTINGS_ERROR: {
     error: 'no_install_app',
