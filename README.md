@@ -1,6 +1,6 @@
-# BX24.Node.js
+# bitrix24_api_client
 
-BX24.Node.js — небольшой SDK для использования REST API Битрикс24 в приложениях
+bitrix24_api_client — небольшой SDK для использования REST API Битрикс24 в приложениях
 
 # Содержание
 
