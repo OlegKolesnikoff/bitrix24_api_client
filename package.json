@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OlegKolesnikoff/BX24.Node.js.git"
+    "url": "git+https://github.com/OlegKolesnikoff/bitrix24_api_client.git"
   },
   "keywords": [
     "Битрикс24",
@@ -20,9 +20,9 @@
   "author": "Колесников Олег",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/OlegKolesnikoff/BX24.Node.js/issues"
+    "url": "https://github.com/OlegKolesnikoff/bitrix24_api_client.git/issues"
   },
-  "homepage": "https://github.com/OlegKolesnikoff/BX24.Node.js#readme",
+  "homepage": "https://github.com/OlegKolesnikoff/bitrix24_api_client.git#readme",
   "devDependencies": {
     "@eslint/js": "^9.11.1",
     "eslint": "^9.12.0",
