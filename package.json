@@ -1,5 +1,5 @@
 {
-  "name": "bitrix24_nodejs_sdk",
+  "name": "bitrix24_api_client",
   "version": "0.0.9",
   "description": "Node.js SDK для REST API Битрикс24",
   "main": "main.js",
