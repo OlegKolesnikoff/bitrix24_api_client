@@ -130,3 +130,5 @@ dist
 .pnp.*
 
 eslint.config.js
+keys.json
+auth.json
