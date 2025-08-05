@@ -1,5 +1,10 @@
-const { fetch } = require('undici');
+const { fetch, Agent, ProxyAgent } = require('undici');
 const BitrixApiError = require('./bitrixErrors');
+
+const defaultAgent = new Agent({
+  keepAliveTimeout: 30_000,   // держим сокет 30 с
+  connections: 100,           // пул
+});
 
 /**
  * Внутренний метод для обработки fetch-запроса.
@@ -13,6 +18,7 @@ const BitrixApiError = require('./bitrixErrors');
  * @param {Object} [options.logger] - Объект логгера
  * @param {string} [options.requestId] - Идентификатор запроса
  * @param {Object} [options.logContext={}] - Контекст для логирования
+ * @param {string|null} [options.proxy] - URL прокси-сервера (например, 'http://user:pass@host:port')
  * @returns {Promise<Object>} Ответ от Bitrix24 или объект ошибки.
  */
 async function bitrixFetch(url, params, options = {}) {
@@ -20,7 +26,7 @@ async function bitrixFetch(url, params, options = {}) {
   if (options.remainingTryes === undefined) options.remainingTryes = options.tryes;
   options.remainingTryes -= 1;
 
-  const { abortTimeout = 15000, logger, requestId, logContext = {} } = options;
+  const { abortTimeout = 15000, logger, requestId, logContext = {}, proxy = null } = options;
 
   const startTime = Date.now();
 
@@ -34,6 +40,8 @@ async function bitrixFetch(url, params, options = {}) {
     });
 
     params.signal = AbortSignal.timeout(abortTimeout);
+    // Настраиваем агент для запроса с учетом прокси
+    params.dispatcher = proxy ? new ProxyAgent(proxy) : defaultAgent;
 
     const response = await fetch(url, params);
     const responseTime = Date.now() - startTime;
@@ -264,6 +272,7 @@ async function handleFetchError(error, url, params, options) {
         requestId,
         ...logContext,
         abortTimeout,
+        stack: error.stack,
       });
 
       // Повторяем запрос
@@ -276,11 +285,11 @@ async function handleFetchError(error, url, params, options) {
         requestId,
         ...logContext,
         abortTimeout,
+        stack: error.stack,
       });
       return networkError;
     }
   }
-
   // Если нет попыток или ошибка не подлежит повторной попытке
   logger.error(`Запрос #${requestId} завершился с неустранимой ошибкой: ${error.name} ${error.message}`, {
     url,
@@ -288,6 +297,7 @@ async function handleFetchError(error, url, params, options) {
     ...logContext,
     original_error: error,
     remainingTryes,
+    stack: error.stack,
   });
 
   return error;
