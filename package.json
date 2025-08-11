@@ -4,7 +4,14 @@
   "description": "Node.js клиент для REST API Битрикс24",
   "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "user.test": "node tests/test.js user.test",
+    "event.test": "node tests/test.js event.test",
+    "limits.test": "node tests/test.js limits.test",
+    "contact.test": "node tests/test.js contact.test",
+    "deal.test": "node tests/test.js deal.test",
+    "lead.test": "node tests/test.js lead.test",
+    "product.test": "node tests/test.js product.test",
+    "imopenlines.test": "node tests/test.js imopenlines.test",
     "lint": "eslint"
   },
   "repository": {

@@ -79,7 +79,7 @@ class Logger {
     let httpStatus = '';
 
     // Добавляем статус, если он есть
-    if (processedData.status) {
+    if (processedData?.status) {
       httpStatus = `[${processedData.status}]`;
     }
 

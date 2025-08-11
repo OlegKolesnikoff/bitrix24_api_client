@@ -6,7 +6,7 @@ const requestLimiter = require('./utils/requestLimiter');
 const install = require('./src/install');
 const { configureLogger, defaultLogger } = require('./utils/logFetch');
 const { validateAuth, validateRequest, isValidOAuthEndpoint } = require('./utils/validationUtils');
-const { convertToOAuthEndpoint, getDefaultHeaders } = require('./utils/requestUtils');
+const { convertToOAuthEndpoint, getDefaultHeaders, extractDomainFromEndpoint } = require('./utils/requestUtils');
 const { handleError } = require('./utils/errorHandler');
 
 /**
@@ -217,34 +217,50 @@ class Bitrix24API {
    * @returns {Promise<Object|null>} Новый ответ или null
    */
   static async #refreshAuth(query, auth) {
-    const refreshQuery = {
-      this_auth: 'Y',
-      method: 'oauth.token',
-      params: {
-        client_id: this.config.client_id,
-        grant_type: 'refresh_token',
-        client_secret: this.config.client_secret,
-        refresh_token: auth.refresh_token,
-      },
-    };
+    try {
+      // Логируем начало обновления токена
+      this.config.requestOptions.logger.debug(`Начало обновления токена для ${auth.domain}`);
+      
+      const refreshQuery = {
+        this_auth: 'Y',
+        method: 'oauth.token',
+        params: {
+          client_id: this.config.client_id,
+          grant_type: 'refresh_token',
+          client_secret: this.config.client_secret,
+          refresh_token: auth.refresh_token,
+        },
+      };
 
-    // Используем прямой вызов, чтобы избежать зацикливания
-    const requestData = this.#prepareOAuthRequest(refreshQuery, auth);
-    const updatedAuth = await this.#executeRequest(requestData);
+      // Запрашиваем новый токен
+      const requestData = this.#prepareOAuthRequest(refreshQuery, auth);
+      const updatedAuth = await this.#executeRequest(requestData);
 
-    if (updatedAuth.error) return updatedAuth;
+      if (updatedAuth.error) {
+        this.config.requestOptions.logger.error(`Ошибка обновления токена для ${auth.domain}: ${updatedAuth.error}`);
+        return null;
+      }
 
-    const newAuth = {
-      ...updatedAuth,
-      domain: auth.domain,
-    };
+      const newAuth = {
+        ...updatedAuth,
+        domain: extractDomainFromEndpoint(updatedAuth.client_endpoint) || auth.domain,
+      };
 
-    const isSetAppSettings = await this.#setAuth(newAuth);
-
-    if (isSetAppSettings) {
-      return await this.call(query.method, query.params, newAuth);
+      // Сохраняем новую авторизацию
+      const isSetAppSettings = await this.#setAuth(newAuth);
+      
+      if (isSetAppSettings) {
+        this.config.requestOptions.logger.debug(`Токен успешно обновлен для ${auth.domain}`);
+        // Выполняем исходный запрос с обновленной авторизацией
+        return await this.call(query.method, query.params, newAuth);
+      } else {
+        this.config.requestOptions.logger.error(`Не удалось сохранить новую авторизацию для ${auth.domain}`);
+        return null;
+      }
+    } catch (error) {
+      this.config.requestOptions.logger.error(`Ошибка при обновлении токена для ${auth.domain}: ${error.message}`);
+      return null;
     }
-    return null;
   }
 
   /**
@@ -265,9 +281,6 @@ class Bitrix24API {
     if (!appAuth) {
       return handleError({ name: 'AuthError', message: 'No valid auth found' });
     }
-
-    // Применяем лимитирование для домена, передаем имя метода
-    await requestLimiter.throttle(appAuth.domain, query.method || 'unknown');
 
     // Подготовка параметров запроса
     const requestData =

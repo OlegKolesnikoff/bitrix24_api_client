@@ -1,9 +1,10 @@
 const { fetch, Agent, ProxyAgent } = require('undici');
 const BitrixApiError = require('./bitrixErrors');
+const limiter = require('./requestLimiter');
 
 const defaultAgent = new Agent({
-  keepAliveTimeout: 30_000,   // держим сокет 30 с
-  connections: 100,           // пул
+  keepAliveTimeout: 30_000, // держим сокет 30 с
+  connections: 300, // пул
 });
 
 /**
@@ -29,6 +30,14 @@ async function bitrixFetch(url, params, options = {}) {
   const { abortTimeout = 15000, logger, requestId, logContext = {}, proxy = null } = options;
 
   const startTime = Date.now();
+
+  // Извлекаем домен из URL для проверки лимитов
+  const urlObj = new URL(url);
+  const domain = urlObj.hostname;
+  const apiMethod = logContext.apiMethod || '';
+
+  // Проверка лимитов перед запросом
+  await limiter.throttle(domain, apiMethod);
 
   try {
     // Логируем начало запроса
@@ -209,6 +218,13 @@ async function handleClientError(response, url, options) {
 async function handleServerError(response, url, params, options) {
   const { pause, tryes, remainingTryes, requestId, logContext = {}, logger } = options;
   const errorData = await parseResponse(response);
+  // Извлекаем домен из URL
+  const urlObj = new URL(url);
+  const domain = urlObj.hostname;
+
+  // Извлекаем метод API из контекста логирования
+  const apiMethod = logContext.apiMethod || '';
+  limiter.handleResponse(domain, errorData, apiMethod);
 
   if (remainingTryes > 0) {
     logger.warn(

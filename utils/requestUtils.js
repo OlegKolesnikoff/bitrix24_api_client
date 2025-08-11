@@ -44,7 +44,25 @@ function getDefaultHeaders(version) {
   };
 }
 
+/**
+ * Извлекает домен из URL endpoint
+ *
+ * @param {string} endpoint - URL endpoint (например, client_endpoint)
+ * @returns {string|null} - Домен или null в случае ошибки
+ */
+function extractDomainFromEndpoint(endpoint) {
+  if (!endpoint || typeof endpoint !== 'string') return null;
+
+  try {
+    const url = new URL(endpoint);
+    return url.hostname;
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
   convertToOAuthEndpoint,
   getDefaultHeaders,
+  extractDomainFromEndpoint,
 };
