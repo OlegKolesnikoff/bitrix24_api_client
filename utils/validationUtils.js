@@ -60,10 +60,6 @@ function validateRequest(method, auth, config) {
     throw new Error('auth object is required');
   }
 
-  if (!auth.domain || !auth.client_endpoint || !auth.access_token) {
-    throw new Error('auth must contain domain, client_endpoint and access_token');
-  }
-
   if (!config.client_id) throw new Error('client_id required');
   if (!config.client_secret) throw new Error('client_secret required');
 }

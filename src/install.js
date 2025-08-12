@@ -12,10 +12,10 @@
  * @param {string} [request.member_id] - Идентификатор пользователя.
  * @param {string} [request.status] - Статус установки.
  * @param {Function} setAuthFunction - Функция для сохранения данных авторизации.
+ * @param {Object} options - Дополнительные опции
+ * @param {Object} options.logger - Логгер
  * @returns {Promise<Object>} Результат установки приложения.
  */
-
-const { defaultLogger: logger } = require('../utils/logFetch');
 
 // Константы для типов событий и размещений
 const EVENT_TYPES = {
@@ -51,10 +51,12 @@ function createAuthObject(params) {
   };
 }
 
-async function installApp(request, setAuthFunction) {
+async function installApp(request, setAuthFunction, options = {}) {
+  const logger = options.logger || console;
+
   // Формируем контекст для логирования
   const logContext = {
-    domain: request?.DOMAIN || request?.auth?.domain || 'unknown',
+    domain: request?.DOMAIN ||  request?.domain || request?.auth?.domain || 'unknown',
     apiMethod: 'installApp',
   };
 
@@ -87,20 +89,16 @@ async function installApp(request, setAuthFunction) {
 
     // установка приложения без интерфейса
     if (event === EVENT_TYPES.APP_INSTALL && auth) {
-      logger.info('Установка приложения без интерфейса', logContext);
       result.install = await setAuthFunction(auth, true);
       result.auth = auth;
       logger.info('Приложение установлено без интерфейса', {
         ...logContext,
-        success: result.install
       });
       return result;
     }
 
     // установка приложения с интерфейсом, на странице приложения необходимо вызвать BX24.installFinish()
     if (PLACEMENT === PLACEMENT_TYPES.DEFAULT) {
-      logger.info('Установка приложения с интерфейсом', logContext);
-      
       try {
         const auth = createAuthObject(request);
         result.rest_only = false;

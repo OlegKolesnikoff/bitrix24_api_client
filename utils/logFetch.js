@@ -18,6 +18,19 @@
  * logger.info('Отправка запроса', { url: 'https://api.example.com', method: 'GET' });
  */
 class Logger {
+  // Список чувствительных параметров для маскирования
+  SENSITIVE_PARAMS = [
+    'auth',
+    'access_token',
+    'refresh_token',
+    'client_secret',
+    'token',
+    'password',
+    'key',
+    'secret',
+    'code',
+  ];
+
   /**
    * Создает новый экземпляр логгера
    *
@@ -186,12 +199,22 @@ class Logger {
    * @returns {Object|string|undefined} Обработанное тело запроса
    * @memberof Logger
    * @since 1.0.0
-   * @example
-   * // Обработка JSON строки
-   * const formatted = logger._formatRequestBody('{"id": 1}');
-   * // Результат: { id: 1 }
    */
   _formatRequestBody(body, maxLength = 2000) {
+    // Специальная обработка для URLSearchParams
+    if (body instanceof URLSearchParams) {
+      const result = {};
+      for (const [key, value] of body.entries()) {
+        if (this.SENSITIVE_PARAMS.includes(key)) {
+          result[key] = '[REDACTED]';
+        } else if (typeof value === 'string' && value.startsWith('data:image/')) {
+          result[key] = this._maskBase64String(value);
+        } else {
+          result[key] = value;
+        }
+      }
+      return result;
+    }
     // Если тело - строка
     if (typeof body === 'string') {
       // Пробуем определить, является ли это JSON
@@ -255,8 +278,27 @@ class Logger {
    */
   _safeStringify(data) {
     try {
+      // Создаем множество для отслеживания уже обработанных объектов (предотвращаем циклические ссылки)
+      const seen = new WeakSet();
+
       // Для обработки больших объектов
       const prepareForStringify = (obj, path = '', depth = 0) => {
+        // Ранняя обработка URLSearchParams
+        if (obj instanceof URLSearchParams) {
+          const result = {};
+
+          for (const [key, value] of obj.entries()) {
+            if (this.SENSITIVE_PARAMS.includes(key)) {
+              result[key] = '[REDACTED]';
+            } else if (typeof value === 'string' && value.startsWith('data:image/')) {
+              result[key] = this._maskBase64String(value);
+            } else {
+              result[key] = value;
+            }
+          }
+          return result;
+        }
+
         if (depth > 10) return '[Depth limit exceeded]'; // Ограничиваем глубину
 
         // Обработка объектов Error
@@ -280,6 +322,12 @@ class Logger {
         }
 
         if (obj === null || typeof obj !== 'object') return obj;
+
+        // Проверка на циклическую ссылку
+        if (seen.has(obj)) {
+          return '[Circular Reference]';
+        }
+        seen.add(obj);
 
         // Специальная обработка для stack в объектах ошибок
         if (path.endsWith('.stack') && typeof obj === 'string') {
@@ -353,23 +401,9 @@ class Logger {
       const urlObj = new URL(url);
       const params = urlObj.searchParams;
 
-      // Расширенный список чувствительных параметров для маскирования
-      const sensitiveParams = [
-        'client_id',
-        'access_token',
-        'refresh_token',
-        'client_secret',
-        'token',
-        'auth',
-        'password',
-        'key',
-        'secret',
-        'code',
-      ];
-
       // Маскируем каждый чувствительный параметр
       let masked = false;
-      sensitiveParams.forEach((param) => {
+      this.SENSITIVE_PARAMS.forEach((param) => {
         if (params.has(param)) {
           params.set(param, '[REDACTED]');
           masked = true;
@@ -406,22 +440,8 @@ class Logger {
    * // Результат: 'invalid-url?client_secret=[REDACTED]'
    */
   _maskUrlWithRegex(url) {
-    // Расширенный список чувствительных параметров
-    const sensitiveParams = [
-      'client_id',
-      'access_token',
-      'refresh_token',
-      'client_secret',
-      'token',
-      'auth',
-      'password',
-      'key',
-      'secret',
-      'code',
-    ];
-
     // Создаем более точное регулярное выражение для каждого параметра
-    return sensitiveParams.reduce((maskedUrl, param) => {
+    return this.SENSITIVE_PARAMS.reduce((maskedUrl, param) => {
       const regex = new RegExp(`([?&]${param}=)([^&]+)`, 'gi');
       return maskedUrl.replace(regex, '$1[REDACTED]');
     }, url);
@@ -438,14 +458,6 @@ class Logger {
    * @returns {Object} Обработанные данные, готовые для логирования
    * @memberof Logger
    * @since 1.0.0
-   * @example
-   * // Обработка данных запроса
-   * const processed = logger._processLogData({
-   *   url: 'https://api.example.com?token=secret',
-   *   body: '{"id": 1}',
-   *   signal: new AbortSignal()
-   * });
-   * // Результат: обработанные данные без signal и с замаскированным URL
    */
   _processLogData(data) {
     if (!data) return data;
@@ -453,7 +465,28 @@ class Logger {
     // Создаем копию, чтобы не модифицировать оригинальные данные
     const processedData = { ...data };
 
-    // Обработка URL с чувствительными данными - проверяем все возможные поля с URL
+    // Удаляем заголовки из ответа для логирования
+    if (processedData.headers) {
+      delete processedData.headers;
+    }
+
+    // Специальная обработка для URLSearchParams в body
+    if (processedData.body instanceof URLSearchParams) {
+      // Сразу преобразуем в обычный объект с маскированием
+      const bodyObj = {};
+      for (const [key, value] of processedData.body.entries()) {
+        if (this.SENSITIVE_PARAMS.includes(key)) {
+          bodyObj[key] = '[REDACTED]';
+        } else if (typeof value === 'string' && value.startsWith('data:image/')) {
+          bodyObj[key] = this._maskBase64String(value);
+        } else {
+          bodyObj[key] = value;
+        }
+      }
+      processedData.body = bodyObj;
+    }
+
+    // Обработка URL с чувствительными данными
     processedData.url &&= this._maskSensitiveDataInUrl(processedData.url);
 
     // Рекурсивно проверяем вложенные объекты на наличие URL и маскируем их
@@ -469,20 +502,12 @@ class Logger {
       }
     });
 
-    // Обработка тела запроса, если оно есть
+    // Если другие параметры запроса через ...params
     if ('body' in processedData) {
       processedData.body = this._formatRequestBody(processedData.body);
     }
 
-    // Если мы передаем параметры запроса через ...params, проверяем отдельно
-    if (!('body' in processedData) && 'method' in processedData && typeof processedData.body === 'undefined') {
-      // Это, вероятно, параметры fetch с body
-      if ('body' in processedData) {
-        processedData.body = this._formatRequestBody(processedData.body);
-      }
-    }
-
-    // Удаляем Signal из параметров (он может вызвать ошибки при сериализации)
+    // Удаляем Signal из параметров
     if (processedData.signal) {
       delete processedData.signal;
     }
@@ -491,11 +516,31 @@ class Logger {
   }
 
   /**
-   * Рекурсивно обрабатывает вложенные объекты, маскируя URL и чувствительные данные
+   * Маскирует base64 строки для предотвращения переполнения логов
    * @private
-   * @param {Object} obj - Объект для обработки
-   * @returns {Object} Обработанный объект
+   * @param {string} value - Строка для проверки
+   * @returns {string} Оригинальная строка или сокращенная версия, если это base64
+   * @memberof Logger
+   * @since 0.2.2
    */
+  _maskBase64String(value) {
+    if (typeof value !== 'string') return value;
+
+    // Проверка на base64-кодированное изображение
+    const base64ImagePattern = /^data:image\/[a-z]+;base64,/i;
+    if (base64ImagePattern.test(value)) {
+      const type = value.match(/^data:image\/([a-z]+);base64,/i)?.[1] || 'unknown';
+      return `[IMAGE BASE64 DATA type=${type}, length=${value.length}]`;
+    }
+
+    // Проверка для других base64 строк (общий случай, если строка длинная и похожа на base64)
+    if (value.length > 500 && /^[A-Za-z0-9+/=]{500,}$/.test(value)) {
+      return `[BASE64 DATA length=${value.length}]`;
+    }
+
+    return value;
+  }
+
   _processNestedObject(obj) {
     if (!obj || typeof obj !== 'object') return obj;
 
@@ -503,24 +548,18 @@ class Logger {
 
     Object.keys(result).forEach((key) => {
       // Маскируем чувствительные ключи
-      if (
-        [
-          'auth',
-          'access_token',
-          'refresh_token',
-          'client_secret',
-          'token',
-          'password',
-          'key',
-          'secret',
-          'code',
-        ].includes(key)
-      ) {
+      if (this.SENSITIVE_PARAMS.includes(key)) {
         result[key] = '[REDACTED]';
       }
-      // Маскируем URL в строковых значениях
-      else if (typeof result[key] === 'string' && (result[key].includes('http') || key.toLowerCase().includes('url'))) {
-        result[key] = this._maskSensitiveDataInUrl(result[key]);
+      // Маскируем URL и base64 в строковых значениях
+      else if (typeof result[key] === 'string') {
+        // Сначала маскируем base64 строки
+        result[key] = this._maskBase64String(result[key]);
+
+        // Затем проверяем URL
+        if (result[key].includes('http') || key.toLowerCase().includes('url')) {
+          result[key] = this._maskSensitiveDataInUrl(result[key]);
+        }
       }
       // Рекурсивно обрабатываем вложенные объекты
       else if (typeof result[key] === 'object' && result[key] !== null) {

@@ -59,13 +59,9 @@ class Bitrix24API {
       tryes: 3,
       pause: 1000,
       abortTimeout: 15000,
-      logger: defaultLogger,
     },
-    proxy: null, // Настройки прокси по умолчанию (null - без прокси)
-    logger: {
-      enabled: true,
-      level: 'debug', // 'debug', 'info', 'warn', 'error'
-    },
+    proxy: null,
+    logger: defaultLogger, // Теперь здесь сам объект логгера
   };
 
   /**
@@ -142,7 +138,9 @@ class Bitrix24API {
   static async installApp(auth) {
     try {
       const authSetter = async (settings) => await this.#setAuth(settings, auth);
-      return install(auth, authSetter);
+      return install(auth, authSetter, { 
+        logger: this.config.logger 
+      });
     } catch (err) {
       return handleError(err);
     }
@@ -164,11 +162,19 @@ class Bitrix24API {
    * });
    */
   static configureLogger(options) {
-    this.config.logger = { ...this.config.logger, ...options };
-    configureLogger(this.config.logger);
-
+    // Настраиваем сам объект логгера, а не отдельные настройки
+    const configuredLogger = configureLogger({
+      enabled: options.enabled,
+      level: options.level
+    });
+    
+    // Заменяем объект логгера в конфигурации
+    this.config.logger = configuredLogger;
+    
     // Передаем логгер в лимитер запросов
-    requestLimiter.setLogger(this.config.requestOptions.logger);
+    requestLimiter.setLogger(configuredLogger);
+    
+    return configuredLogger;
   }
 
   /**
@@ -311,6 +317,7 @@ class Bitrix24API {
     const { url, params, logContext } = requestData;
     return await bitrixFetch(url, params, {
       ...this.config.requestOptions,
+      logger: this.config.logger,
       proxy: this.config.proxy,
       logContext,
     });

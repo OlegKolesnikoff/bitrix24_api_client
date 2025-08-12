@@ -294,7 +294,7 @@ class RequestLimiter {
   _logBucketFillIfNeeded(domain, portal, method) {
     if (portal.totalRequests % 10 === 0) {
       const fillPercent = Math.round((portal.counter / this.MAX_BUCKET) * 100);
-      this.logger.warn(`Заполненность ведра для ${domain}: ${fillPercent}%`, {
+      this.logger.debug(`Заполненность ведра для ${domain}: ${fillPercent}%`, {
         domain,
         apiMethod: method,
         counter: portal.counter,
