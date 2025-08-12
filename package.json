@@ -2,7 +2,7 @@
   "name": "bitrix24_api_client",
   "version": "0.2.0",
   "description": "Node.js клиент для REST API Битрикс24",
-  "main": "main.js",
+  "main": "index.js",
   "scripts": {
     "user.test": "node tests/test.js user.test",
     "event.test": "node tests/test.js event.test",
