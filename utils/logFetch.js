@@ -124,7 +124,7 @@ class Logger {
 
     // Обычный лог для данных без ошибок
     if (data) {
-      this.logger[level](`${prefix} ${message}`, this._safeStringify(processedData));
+      this.logger[level](`${prefix} ${message}`, {...this._safeStringify(processedData)});
     } else {
       this.logger[level](`${prefix} ${message}`);
     }
@@ -368,8 +368,7 @@ class Logger {
         return result;
       };
 
-      const prepared = prepareForStringify(data);
-      return JSON.stringify(prepared, null, 2);
+      return prepareForStringify(data) || {};
     } catch {
       return String(data);
     }

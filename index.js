@@ -165,7 +165,8 @@ class Bitrix24API {
     // Настраиваем сам объект логгера, а не отдельные настройки
     const configuredLogger = configureLogger({
       enabled: options.enabled,
-      level: options.level
+      level: options.level,
+      logger: this.config.logger,
     });
     
     // Заменяем объект логгера в конфигурации
