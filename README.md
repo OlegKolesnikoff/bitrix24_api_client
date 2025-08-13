@@ -58,7 +58,7 @@ const customLogger = winston.createLogger({
 });
 
 // Подключение пользовательского логгера
-Bitrix24API.config.requestOptions.logger = customLogger;
+Bitrix24API.config.logger = customLogger;
 // Настройки логирования
 Bitrix24API.configureLogger({
   enabled: true,
@@ -150,7 +150,7 @@ const customLogger = winston.createLogger({
 });
 
 // Подключение пользовательского логгера
-Bitrix24API.config.requestOptions.logger = customLogger;
+Bitrix24API.config.logger = customLogger;
 ```
 
 ### Формат логов

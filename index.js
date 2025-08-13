@@ -225,7 +225,7 @@ class Bitrix24API {
   static async #refreshAuth(query, auth) {
     try {
       // Логируем начало обновления токена
-      this.config.requestOptions.logger.debug(`Начало обновления токена для ${auth.domain}`);
+      this.config.logger.debug(`Начало обновления токена для ${auth.domain}`);
       
       const refreshQuery = {
         this_auth: 'Y',
@@ -243,7 +243,7 @@ class Bitrix24API {
       const updatedAuth = await this.#executeRequest(requestData);
 
       if (updatedAuth.error) {
-        this.config.requestOptions.logger.error(`Ошибка обновления токена для ${auth.domain}: ${updatedAuth.error}`);
+        this.config.logger.error(`Ошибка обновления токена для ${auth.domain}: ${updatedAuth.error}`);
         return null;
       }
 
@@ -256,15 +256,15 @@ class Bitrix24API {
       const isSetAppSettings = await this.#setAuth(newAuth);
       
       if (isSetAppSettings) {
-        this.config.requestOptions.logger.debug(`Токен успешно обновлен для ${auth.domain}`);
+        this.config.logger.debug(`Токен успешно обновлен для ${auth.domain}`);
         // Выполняем исходный запрос с обновленной авторизацией
         return await this.call(query.method, query.params, newAuth);
       } else {
-        this.config.requestOptions.logger.error(`Не удалось сохранить новую авторизацию для ${auth.domain}`);
+        this.config.logger.error(`Не удалось сохранить новую авторизацию для ${auth.domain}`);
         return null;
       }
     } catch (error) {
-      this.config.requestOptions.logger.error(`Ошибка при обновлении токена для ${auth.domain}: ${error.message}`);
+      this.config.logger.error(`Ошибка при обновлении токена для ${auth.domain}: ${error.message}`);
       return null;
     }
   }
