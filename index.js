@@ -216,7 +216,7 @@ class Bitrix24API {
    * Обновляет токен авторизации при его истечении.
    *
    * Запрашивает новый токен через refresh_token и повторяет исходный запрос
-   * с обновленной авторизацией.
+   * с обновленной авторизацией. Поддерживает локальные установки Битрикс24.
    *
    * @private
    * @param {Object} query - Исходный запрос
@@ -228,16 +228,24 @@ class Bitrix24API {
       // Логируем начало обновления токена
       this.config.logger.debug(`Начало обновления токена для ${auth.domain}`);
       
+      // Определяем, используем ли локальные идентификаторы или глобальные
+      const isLocalBitrix = auth.status === 'L' && 
+                            auth.C_REST_CLIENT_ID && 
+                            auth.C_REST_CLIENT_SECRET;
+      
       const refreshQuery = {
         this_auth: 'Y',
         method: 'oauth.token',
         params: {
-          client_id: this.config.client_id,
+          client_id: isLocalBitrix ? auth.C_REST_CLIENT_ID : this.config.client_id,
           grant_type: 'refresh_token',
-          client_secret: this.config.client_secret,
+          client_secret: isLocalBitrix ? auth.C_REST_CLIENT_SECRET : this.config.client_secret,
           refresh_token: auth.refresh_token,
         },
       };
+
+      // Логируем информацию о режиме работы (для отладки)
+      this.config.logger.debug(`Обновление токена в режиме: ${isLocalBitrix ? 'локальный Битрикс24' : 'облачный Битрикс24'}`);
 
       // Запрашиваем новый токен
       const requestData = this.#prepareOAuthRequest(refreshQuery, auth);
@@ -248,10 +256,18 @@ class Bitrix24API {
         return null;
       }
 
+      // Сохраняем локальные идентификаторы в новом объекте авторизации
       const newAuth = {
         ...updatedAuth,
         domain: extractDomainFromEndpoint(updatedAuth.client_endpoint) || auth.domain,
       };
+
+      // Переносим локальные настройки, если они были в исходном объекте
+      if (isLocalBitrix) {
+        newAuth.status = 'L';
+        newAuth.C_REST_CLIENT_ID = auth.C_REST_CLIENT_ID;
+        newAuth.C_REST_CLIENT_SECRET = auth.C_REST_CLIENT_SECRET;
+      }
 
       // Сохраняем новую авторизацию
       const isSetAppSettings = await this.#setAuth(newAuth);
