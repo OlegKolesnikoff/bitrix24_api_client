@@ -257,7 +257,7 @@ class Bitrix24API {
           updatedAuth = await this.#executeRequest(requestData);
 
           // Если ответ в формате ошибки Bitrix24
-          if (!updatedAuth || updatedAuth?.error) {
+          if (!updatedAuth || updatedAuth?.error || updatedAuth.format === 'text' || updatedAuth.format === 'html') {
             this.config.logger.warn(
               `Ошибка обновления токена (попытка ${attempt}/${tryes}) для ${auth.domain}: ${updatedAuth?.error_description || updatedAuth?.error || 'Ответ без тела'}`,
             );
@@ -280,7 +280,7 @@ class Bitrix24API {
       }
 
       // Если после всех попыток так и не получили валидные данные
-      if (!updatedAuth || updatedAuth.error) {
+      if (!updatedAuth || updatedAuth?.error || updatedAuth.format === 'text' || updatedAuth.format === 'html') {
         this.config.logger.error(
           `Обновление токена провалено после ${tryes} попыток для ${auth.domain}: ${lastError ? lastError.message : 'unknown error'
           }`,
