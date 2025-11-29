@@ -138,8 +138,8 @@ class Bitrix24API {
   static async installApp(auth) {
     try {
       const authSetter = async (settings) => await this.#setAuth(settings, auth);
-      return install(auth, authSetter, { 
-        logger: this.config.logger 
+      return install(auth, authSetter, {
+        logger: this.config.logger
       });
     } catch (err) {
       return handleError(err);
@@ -168,13 +168,13 @@ class Bitrix24API {
       level: options.level,
       logger: this.config.logger,
     });
-    
+
     // Заменяем объект логгера в конфигурации
     this.config.logger = configuredLogger;
-    
+
     // Передаем логгер в лимитер запросов
     requestLimiter.setLogger(configuredLogger);
-    
+
     return configuredLogger;
   }
 
@@ -215,24 +215,25 @@ class Bitrix24API {
   /**
    * Обновляет токен авторизации при его истечении.
    *
-   * Запрашивает новый токен через refresh_token и повторяет исходный запрос
-   * с обновленной авторизацией. Поддерживает локальные установки Битрикс24.
+   * Делает несколько попыток запроса oauth.token, используя настройки
+   * config.requestOptions.tryes и config.requestOptions.pause.
    *
    * @private
-   * @param {Object} query - Исходный запрос
+   * @param {Object} query - Исходный запрос (method, params)
    * @param {Object} auth - Данные авторизации
    * @returns {Promise<Object|null>} Новый ответ или null
    */
   static async #refreshAuth(query, auth) {
     try {
+      const { tryes = 3, pause = 1000 } = this.config.requestOptions || {};
       // Логируем начало обновления токена
       this.config.logger.debug(`Начало обновления токена для ${auth.domain}`);
-      
+
       // Определяем, используем ли локальные идентификаторы или глобальные
-      const isLocalBitrix = auth.status === 'L' && 
-                            auth.C_REST_CLIENT_ID && 
-                            auth.C_REST_CLIENT_SECRET;
-      
+      const isLocalBitrix = auth.status === 'L' &&
+        auth.C_REST_CLIENT_ID &&
+        auth.C_REST_CLIENT_SECRET;
+
       const refreshQuery = {
         this_auth: 'Y',
         method: 'oauth.token',
@@ -247,12 +248,43 @@ class Bitrix24API {
       // Логируем информацию о режиме работы (для отладки)
       this.config.logger.debug(`Обновление токена в режиме: ${isLocalBitrix ? 'локальный Битрикс24' : 'облачный Битрикс24'}`);
 
-      // Запрашиваем новый токен
-      const requestData = this.#prepareOAuthRequest(refreshQuery, auth);
-      const updatedAuth = await this.#executeRequest(requestData);
+      let lastError;
+      let updatedAuth;
 
-      if (updatedAuth.error) {
-        this.config.logger.error(`Ошибка обновления токена для ${auth.domain}: ${updatedAuth.error}`);
+      for (let attempt = 1; attempt <= tryes; attempt++) {
+        try {
+          const requestData = this.#prepareOAuthRequest(refreshQuery, auth);
+          updatedAuth = await this.#executeRequest(requestData);
+
+          // Если ответ в формате ошибки Bitrix24
+          if (!updatedAuth || updatedAuth?.error) {
+            this.config.logger.warn(
+              `Ошибка обновления токена (попытка ${attempt}/${tryes}) для ${auth.domain}: ${updatedAuth?.error_description || updatedAuth?.error || 'Ответ без тела'}`,
+            );
+            lastError = new Error(updatedAuth?.error_description || updatedAuth?.error || 'Ответ без тела');
+          } else {
+            // Успешно получили новые токены – выходим из цикла
+            break;
+          }
+        } catch (err) {
+          lastError = err;
+          this.config.logger.warn(
+            `Не удалось обновить токен (попытка ${attempt}/${tryes}) для ${auth.domain}: ${err.message}`,
+          );
+        }
+
+        // Если это не последняя попытка – ждём паузу
+        if (attempt < tryes && pause > 0) {
+          await new Promise((resolve) => setTimeout(resolve, pause));
+        }
+      }
+
+      // Если после всех попыток так и не получили валидные данные
+      if (!updatedAuth || updatedAuth.error) {
+        this.config.logger.error(
+          `Обновление токена провалено после ${tryes} попыток для ${auth.domain}: ${lastError ? lastError.message : 'unknown error'
+          }`,
+        );
         return null;
       }
 
@@ -271,7 +303,7 @@ class Bitrix24API {
 
       // Сохраняем новую авторизацию
       const isSetAppSettings = await this.#setAuth(newAuth);
-      
+
       if (isSetAppSettings) {
         this.config.logger.debug(`Токен успешно обновлен для ${auth.domain}`);
         // Выполняем исходный запрос с обновленной авторизацией
