@@ -64,30 +64,7 @@ function validateRequest(method, auth, config) {
   if (!config.client_secret) throw new Error('client_secret required');
 }
 
-/**
- * Проверяет, соответствует ли URL допустимым шаблонам OAuth-эндпоинтов
- *
- * @param {string} url - URL для проверки
- * @returns {boolean} true, если URL соответствует одному из допустимых шаблонов, иначе false
- *
- * @example
- * const isValid = isValidOAuthEndpoint('https://oauth.bitrix.info/oauth/token/');
- * // Вернет: true
- *
- * const isInvalid = isValidOAuthEndpoint('https://example.com/oauth/token/');
- * // Вернет: false
- */
-function isValidOAuthEndpoint(url) {
-  const validPatterns = [
-    /^https:\/\/oauth\.bitrix\.info\/oauth\/token\/$/,
-    /^https:\/\/oauth\.bitrix\.tech\/oauth\/token\/$/,
-  ];
-
-  return validPatterns.some((pattern) => pattern.test(url));
-}
-
 module.exports = {
   validateAuth,
   validateRequest,
-  isValidOAuthEndpoint,
 };
