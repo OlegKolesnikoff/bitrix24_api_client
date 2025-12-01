@@ -389,7 +389,6 @@ class Bitrix24API {
       url,
       params: {
         method: 'GET',
-        redirect: 'manual',
         headers: getDefaultHeaders(this.#VERSION),
       },
       logContext: {
