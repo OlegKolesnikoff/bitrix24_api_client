@@ -5,8 +5,8 @@ const buildQuery = require('./utils/buildQuery');
 const requestLimiter = require('./utils/requestLimiter');
 const install = require('./src/install');
 const { configureLogger, defaultLogger } = require('./utils/logFetch');
-const { validateAuth, validateRequest, isValidOAuthEndpoint } = require('./utils/validationUtils');
-const { convertToOAuthEndpoint, getDefaultHeaders, extractDomainFromEndpoint } = require('./utils/requestUtils');
+const { validateAuth, validateRequest } = require('./utils/validationUtils');
+const {  getDefaultHeaders, extractDomainFromEndpoint } = require('./utils/requestUtils');
 const { handleError } = require('./utils/errorHandler');
 
 /**
@@ -382,18 +382,7 @@ class Bitrix24API {
    */
   static #prepareOAuthRequest(query, auth) {
     // Определяем OAuth endpoint
-    let oauthEndpoint = this.#OAUTH_TOKEN_ENDPOINT;
-
-    // Если в auth есть server_endpoint, пробуем его использовать
-    if (auth.server_endpoint) {
-      // Преобразуем URL в формат для OAuth
-      const convertedEndpoint = convertToOAuthEndpoint(auth.server_endpoint);
-
-      // Проверяем, что URL соответствует допустимым шаблонам
-      if (isValidOAuthEndpoint(convertedEndpoint)) {
-        oauthEndpoint = convertedEndpoint;
-      }
-    }
+    const oauthEndpoint = this.#OAUTH_TOKEN_ENDPOINT;
 
     const url = oauthEndpoint + '?' + buildQuery(query.params).toString();
     return {
