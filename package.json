@@ -1,6 +1,6 @@
 {
   "name": "bitrix24_api_client",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Node.js клиент для REST API Битрикс24",
   "main": "index.js",
   "scripts": {
