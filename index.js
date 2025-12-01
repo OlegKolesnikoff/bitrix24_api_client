@@ -31,7 +31,7 @@ class Bitrix24API {
    * @private
    * @type {string}
    */
-  static #OAUTH_TOKEN_ENDPOINT = 'https://oauth.bitrix.info/oauth/token/';
+  static #OAUTH_TOKEN_ENDPOINT = 'https://oauth.bitrix24.tech/oauth/token/';
 
   /**
    * Конфигурация клиента API
