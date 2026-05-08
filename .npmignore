@@ -1,0 +1,13 @@
+.codex
+.vscode/
+tests/
+
+eslint.config.js
+
+node_modules/
+coverage/
+*.log
+*.tgz
+
+.env
+.env.*
