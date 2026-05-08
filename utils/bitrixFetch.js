@@ -1,6 +1,7 @@
 const { fetch, Agent, ProxyAgent } = require('undici');
 const BitrixApiError = require('./bitrixErrors');
 const limiter = require('./requestLimiter');
+const { prepareRequestLogData } = require('./logFetch');
 
 const defaultAgent = new Agent({
   keepAliveTimeout: 30_000, // держим сокет 30 с
@@ -40,10 +41,11 @@ async function bitrixFetch(url, params, options = {}) {
   await limiter.throttle(domain, apiMethod);
 
   try {
+    const requestData = prepareRequestLogData(url, params);
+
     // Логируем начало запроса
-    logger.info(`Отправка запроса: #${requestId}`, {
-      url,
-      ...params,
+    logger.debug(`Отправка запроса: #${requestId}`, {
+      ...requestData,
       ...logContext,
       requestId,
     });
@@ -61,7 +63,7 @@ async function bitrixFetch(url, params, options = {}) {
     switch (statusGroup) {
       case 2:
         // Обработка успешных ответов // 200-299
-        return await handleSuccessResponse(response, url, responseTime, options);
+        return await handleSuccessResponse(response, url, responseTime, options, requestData);
 
       case 3: // 300-399
         // Обработка редиректов
@@ -94,21 +96,24 @@ async function bitrixFetch(url, params, options = {}) {
  * @param {string} url - URL запроса
  * @param {number} responseTime - Время выполнения запроса в мс
  * @param {Object} [options={}] - Опции запроса
+ * @param {Object} [requestData] - Данные исходного запроса для логирования
  */
-async function handleSuccessResponse(response, url, responseTime, options) {
+async function handleSuccessResponse(response, url, responseTime, options, requestData = { url }) {
   const { logger, requestId, logContext } = options;
 
   const result = await parseResponse(response);
 
   // Логируем информацию о полученном ответе
   logger.info(`Запрос #${requestId} получил ответ за: ${responseTime}ms`, {
-    url,
-    responseTime,
     status: response.status,
-    statusText: response.statusText,
-    headers: Object.fromEntries(response.headers.entries()),
     requestId,
-    body: result,
+    request: requestData,
+    response: {
+      status: response.status,
+      statusText: response.statusText,
+      responseTime,
+      body: result,
+    },
     ...logContext,
   });
 

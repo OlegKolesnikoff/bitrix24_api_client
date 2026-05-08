@@ -573,6 +573,25 @@ class Logger {
 // Экспортируем экземпляр по умолчанию
 const defaultLogger = new Logger();
 
+function prepareRequestLogData(url, params) {
+  return {
+    url,
+    ...Object.fromEntries(
+      Object.entries(params)
+        .filter(([key]) => key !== 'signal' && key !== 'dispatcher')
+        .map(([key, value]) => [key, normalizeLogValue(value)])
+    ),
+  };
+}
+
+function normalizeLogValue(value) {
+  if (value instanceof URLSearchParams) {
+    return Object.fromEntries(value.entries());
+  }
+
+  return value;
+}
+
 /**
  * Модуль экспорта логгера
  *
@@ -591,6 +610,12 @@ module.exports = {
    * @type {Logger}
    */
   defaultLogger,
+
+  /**
+   * Подготавливает данные HTTP-запроса для логирования
+   * @type {Function}
+   */
+  prepareRequestLogData,
 
   /**
    * Функция для настройки логгера по умолчанию
@@ -615,7 +640,13 @@ module.exports = {
    * });
    */
   configureLogger: (options) => {
-    Object.assign(defaultLogger, new Logger(options));
+    const loggerOptions = { ...options };
+
+    if (loggerOptions.logger instanceof Logger) {
+      delete loggerOptions.logger;
+    }
+
+    Object.assign(defaultLogger, new Logger(loggerOptions));
     return defaultLogger;
   },
 };

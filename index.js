@@ -137,7 +137,7 @@ class Bitrix24API {
    */
   static async installApp(auth) {
     try {
-      const authSetter = async (settings) => await this.#setAuth(settings, auth);
+      const authSetter = async (settings, isInstall = false) => await this.#setAuth(settings, isInstall);
       return install(auth, authSetter, {
         logger: this.config.logger
       });
@@ -204,9 +204,9 @@ class Bitrix24API {
    * @param {Object} auth - Настройки авторизации для сохранения
    * @returns {Promise<boolean>} true если успешно, иначе false
    */
-  static async #setAuth(auth) {
+  static async #setAuth(auth, isInstall = false) {
     if (validateAuth(auth)) {
-      return await this.config.writeAuth(auth);
+      return await this.config.writeAuth(auth, isInstall);
     }
 
     return false;
@@ -226,8 +226,12 @@ class Bitrix24API {
   static async #refreshAuth(query, auth) {
     try {
       const { tryes = 3, pause = 1000 } = this.config.requestOptions || {};
+      const refreshLogContext = {
+        domain: auth.domain,
+        apiMethod: 'oauth.token',
+      };
       // Логируем начало обновления токена
-      this.config.logger.debug(`Начало обновления токена для ${auth.domain}`);
+      this.config.logger.info(`Начало обновления токена для ${auth.domain}`, refreshLogContext);
 
       // Определяем, используем ли локальные идентификаторы или глобальные
       const isLocalBitrix = auth.status === 'L' &&
@@ -245,8 +249,11 @@ class Bitrix24API {
         },
       };
 
-      // Логируем информацию о режиме работы (для отладки)
-      this.config.logger.debug(`Обновление токена в режиме: ${isLocalBitrix ? 'локальный Битрикс24' : 'облачный Битрикс24'}`);
+      // Логируем режим обновления токена
+      this.config.logger.info(
+        `Обновление токена в режиме: ${isLocalBitrix ? 'локальный Битрикс24' : 'облачный Битрикс24'}`,
+        refreshLogContext
+      );
 
       let lastError;
       let updatedAuth;
@@ -258,8 +265,17 @@ class Bitrix24API {
 
           // Если ответ в формате ошибки Bitrix24
           if (!updatedAuth || updatedAuth?.error || updatedAuth.format === 'text' || updatedAuth.format === 'html') {
+            if (this.#isNonRetryableOAuthError(updatedAuth)) {
+              this.config.logger.error(
+                `Обновление токена невозможно для ${auth.domain}: ${updatedAuth.error_description || updatedAuth.error}`,
+                refreshLogContext
+              );
+              return null;
+            }
+
             this.config.logger.warn(
               `Ошибка обновления токена (попытка ${attempt}/${tryes}) для ${auth.domain}: ${updatedAuth?.error_description || updatedAuth?.error || 'Ответ без тела'}`,
+              refreshLogContext
             );
             lastError = new Error(updatedAuth?.error_description || updatedAuth?.error || 'Ответ без тела');
           } else {
@@ -270,6 +286,7 @@ class Bitrix24API {
           lastError = err;
           this.config.logger.warn(
             `Не удалось обновить токен (попытка ${attempt}/${tryes}) для ${auth.domain}: ${err.message}`,
+            refreshLogContext
           );
         }
 
@@ -284,6 +301,7 @@ class Bitrix24API {
         this.config.logger.error(
           `Обновление токена провалено после ${tryes} попыток для ${auth.domain}: ${lastError ? lastError.message : 'unknown error'
           }`,
+          refreshLogContext
         );
         return null;
       }
@@ -305,17 +323,36 @@ class Bitrix24API {
       const isSetAppSettings = await this.#setAuth(newAuth);
 
       if (isSetAppSettings) {
-        this.config.logger.debug(`Токен успешно обновлен для ${auth.domain}`);
+        this.config.logger.info(`Токен успешно обновлен для ${auth.domain}`, refreshLogContext);
         // Выполняем исходный запрос с обновленной авторизацией
         return await this.call(query.method, query.params, newAuth);
       } else {
-        this.config.logger.error(`Не удалось сохранить новую авторизацию для ${auth.domain}`);
+        this.config.logger.error(`Не удалось сохранить новую авторизацию для ${auth.domain}`, refreshLogContext);
         return null;
       }
     } catch (error) {
-      this.config.logger.error(`Ошибка при обновлении токена для ${auth.domain}: ${error.message}`);
+      this.config.logger.error(`Ошибка при обновлении токена для ${auth.domain}: ${error.message}`, {
+        domain: auth.domain,
+        apiMethod: 'oauth.token',
+      });
       return null;
     }
+  }
+
+  static #isNonRetryableOAuthError(response) {
+    const error = String(response?.error || '').toLowerCase();
+    const description = String(response?.error_description || '').toLowerCase();
+
+    return [
+      'invalid_request',
+      'invalid_client',
+      'insufficient_scope',
+      'invalid_scope',
+      'invalid_grant',
+      'payment_required',
+    ].includes(error) ||
+      description.includes('subscription has been ended') ||
+      description.includes('payment required');
   }
 
   /**
