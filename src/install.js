@@ -112,7 +112,9 @@ async function installApp(request, setAuthFunction, options = {}) {
       } catch (authError) {
         logger.error('Ошибка при создании объекта auth', {
           ...logContext,
-          error: authError
+          error_name: authError.name,
+          error_message: authError.message,
+          error_stack: authError.stack
         });
         throw new Error(`Ошибка при создании объекта auth: ${authError.message}`);
       }
@@ -126,6 +128,9 @@ async function installApp(request, setAuthFunction, options = {}) {
   } catch (err) {
     logger.error('Ошибка при установке приложения', {
       ...logContext,
+      error_name: err.name,
+      error_message: err.message,
+      error_stack: err.stack,
       error: err
     });
     return {
