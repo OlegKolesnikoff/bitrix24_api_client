@@ -89,7 +89,7 @@ async function installApp(request, setAuthFunction, options = {}) {
 
     // установка приложения без интерфейса
     if (event === EVENT_TYPES.APP_INSTALL && auth) {
-      result.install = await setAuthFunction(auth, true);
+      result.install = Boolean(await setAuthFunction(auth, true));
       result.auth = auth;
       logger.info('Приложение установлено без интерфейса', {
         ...logContext,
@@ -103,7 +103,7 @@ async function installApp(request, setAuthFunction, options = {}) {
         const auth = createAuthObject(request);
         result.rest_only = false;
         result.auth = auth;
-        result.install = await setAuthFunction(auth, true);
+        result.install = Boolean(await setAuthFunction(auth, true));
         logger.info('Приложение установлено с интерфейсом', {
           ...logContext,
           success: result.install
